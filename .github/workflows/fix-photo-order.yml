@@ -1,0 +1,36 @@
+name: Fix anniversary photo order
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fix-photo-order.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Correct month photo mapping
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          # The current wrong mapping is a 3-photo cycle: May<-August, August<-September, September<-May.
+          # Use placeholders so replacements cannot collide.
+          s = s.replace('src="ca4f828060b6.png"><h2>2 Months Together', 'src="__MAY__.png"><h2>2 Months Together')
+          s = s.replace('src="a4c1c585dda5.png"><h2>5 Months Together', 'src="__AUG__.png"><h2>5 Months Together')
+          s = s.replace('class="finalpic photo" src="125f80717fa4.png"', 'class="finalpic photo" src="__SEP__.png"')
+          s = s.replace('src="__MAY__.png"', 'src="125f80717fa4.png"')
+          s = s.replace('src="__AUG__.png"', 'src="ca4f828060b6.png"')
+          s = s.replace('src="__SEP__.png"', 'src="a4c1c585dda5.png"')
+          p.write_text(s)
+          PY
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Correct anniversary photo order"
+          git push
